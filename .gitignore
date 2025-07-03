@@ -1,0 +1,44 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.so
+
+# Environment files
+.env
+.env.*
+
+# Logs and debug
+*.log
+*.tmp
+
+# Virtual environments
+venv/
+.venv/
+
+# VSCode settings
+.vscode/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# SQLite or other local databases
+*.sqlite3
+*.db
+
+# Jupyter and cache
+.ipynb_checkpoints/
+*.ipynb
+.cache/
+
+# Pipenv/Python packaging leftovers
+pip-wheel-metadata/
+*.egg-info/
+build/
+dist/
+
+# GitHub Copilot temp
+copilot.*
+
+# Large data files (if any)
+data/

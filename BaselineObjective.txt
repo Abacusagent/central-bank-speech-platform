@@ -1,0 +1,557 @@
+# Central Bank Speech Analysis Platform - Master Project Instructions
+
+## 🏛️ Project Vision & Core Philosophy
+
+This is the **definitive global monetary policy intelligence platform** - designed to become the world's authoritative source for central bank communication analysis. We're building a next-generation system that will fundamentally change how monetary policy research is conducted.
+
+### Core Principles
+- **Plugin-First Architecture**: Every central bank is a plugin following standardized interfaces
+- **Domain-Driven Design**: Built around monetary policy ontology, not technical convenience
+- **Quality Over Quantity**: Rigorous validation ensures only authentic, high-quality speech data
+- **Infinite Scalability**: Adding new central banks should be trivial, not transformational
+- **NLP-Native**: Designed from the ground up for sophisticated natural language processing
+
+## 🔧 Master Architecture Overview
+
+### Domain Layer (The Heart)
+```python
+# This is our core domain model - NEVER compromise these abstractions
+@dataclass
+class CentralBankSpeech:
+    id: SpeechId
+    speaker: Speaker
+    institution: CentralBank
+    content: SpeechContent
+    metadata: SpeechMetadata
+    sentiment_analysis: Optional[SentimentAnalysis]
+```
+
+### Plugin Interface Standard (The Contract)
+```python
+# ALL central bank scrapers MUST implement this interface
+class CentralBankScraperPlugin(ABC):
+    @abstractmethod
+    def get_institution_code(self) -> str: pass
+    
+    @abstractmethod
+    def discover_speeches(self, date_range: DateRange) -> List[SpeechMetadata]: pass
+    
+    @abstractmethod
+    def extract_speech_content(self, speech_metadata: SpeechMetadata) -> SpeechContent: pass
+    
+    @abstractmethod
+    def get_speaker_database(self) -> SpeakerDatabase: pass
+    
+    @abstractmethod
+    def validate_speech_authenticity(self, speech: CentralBankSpeech) -> ValidationResult: pass
+```
+
+## 🎯 Development Standards (Non-Negotiable)
+
+### Code Quality Standards
+- **Type Safety**: Full Python typing with mypy validation - no `Any` types in production code
+- **Documentation**: Every public method has comprehensive docstrings with examples
+- **Testing**: 95%+ test coverage with integration tests for every plugin
+- **Performance**: Sub-second response times for API calls, sub-minute for batch processing
+
+### Architectural Principles
+- **Separation of Concerns**: Domain logic never touches infrastructure concerns
+- **Dependency Inversion**: High-level modules never depend on low-level modules
+- **Single Responsibility**: Each class has exactly one reason to change
+- **Plugin Isolation**: Failures in one plugin NEVER affect others
+
+## 📁 Project Structure (Sacred Geometry)
+
+```
+central_bank_speech_platform/
+├── domain/                     # Pure domain logic (no dependencies)
+│   ├── entities.py            # Core domain entities
+│   ├── value_objects.py       # Immutable value objects
+│   └── repositories.py        # Abstract repository interfaces
+├── application/               # Use cases and orchestration
+│   ├── services/             # Application services
+│   ├── handlers/             # Command/query handlers
+│   └── orchestrators/        # Multi-plugin orchestration
+├── infrastructure/           # External concerns
+│   ├── storage/             # Database implementations
+│   ├── web/                 # HTTP clients and scrapers
+│   └── nlp/                 # NLP processing engines
+├── plugins/                  # Central bank specific implementations
+│   ├── federal_reserve/     # Fed plugin
+│   ├── bank_of_england/     # BoE plugin
+│   ├── ecb/                 # ECB plugin (priority)
+│   └── bank_of_japan/       # BoJ plugin (priority)
+├── interfaces/              # Plugin interfaces and contracts
+├── config/                  # Configuration management
+├── monitoring/              # Observability and metrics
+├── testing/                 # Test utilities and fixtures
+└── tools/                   # Development and deployment tools
+```
+
+## 🔌 Plugin Development Rules
+
+### Every New Central Bank Plugin Must:
+1. **Implement the Master Interface**: No shortcuts, no exceptions
+2. **Include Speaker Database**: Comprehensive speaker identification with historical context
+3. **Provide Content Validation**: Ensure extracted content is genuine speech content
+4. **Handle Multiple Languages**: If applicable to the institution
+5. **Include Integration Tests**: Minimum 20 test cases covering all scenarios
+6. **Document Edge Cases**: What breaks, what's unreliable, what needs manual intervention
+
+### Plugin Template Structure:
+```python
+# plugins/{institution}/plugin.py
+class {Institution}Plugin(CentralBankScraperPlugin):
+    def get_institution_code(self) -> str:
+        return "{CODE}"  # e.g., "ECB", "BOJ"
+    
+    def discover_speeches(self, date_range: DateRange) -> List[SpeechMetadata]:
+        # Institution-specific discovery logic
+        pass
+    
+    def extract_speech_content(self, speech_metadata: SpeechMetadata) -> SpeechContent:
+        # Institution-specific extraction logic
+        pass
+    
+    def get_speaker_database(self) -> SpeakerDatabase:
+        # Load comprehensive speaker database
+        pass
+    
+    def validate_speech_authenticity(self, speech: CentralBankSpeech) -> ValidationResult:
+        # Institution-specific validation rules
+        pass
+```
+
+## 🧠 NLP Integration Framework
+
+### Modular NLP Pipeline
+```python
+# nlp/pipeline.py
+class NLPProcessingPipeline:
+    def __init__(self):
+        self.processors = [
+            HawkDoveAnalyzer(),          # Monetary policy stance
+            TopicModelingProcessor(),     # Theme identification
+            UncertaintyQuantifier(),      # Policy uncertainty measurement
+            StanceDetector(),            # Subtle position detection
+            ComplexityAnalyzer()         # Communication complexity
+        ]
+    
+    async def process_speech(self, speech: CentralBankSpeech) -> NLPAnalysis:
+        # Run all processors in parallel
+        pass
+```
+
+### NLP Processor Interface
+```python
+class NLPProcessor(ABC):
+    @abstractmethod
+    async def analyze(self, speech: CentralBankSpeech) -> ProcessorResult:
+        pass
+    
+    @abstractmethod
+    def get_confidence_score(self) -> float:
+        pass
+```
+
+## 🌍 Regional Expansion Strategy
+
+### Tier 1 Targets (Immediate Priority)
+1. **ECB** (European Central Bank) - Multi-language, complex institutional structure
+2. **BOJ** (Bank of Japan) - Japanese language support, unique communication style
+3. **PBOC** (People's Bank of China) - Chinese language, limited public communication
+
+### Tier 2 Targets (Next Phase)
+4. **RBA** (Reserve Bank of Australia)
+5. **BOC** (Bank of Canada)
+6. **SNB** (Swiss National Bank)
+7. **RBI** (Reserve Bank of India)
+
+### Plugin Development Order
+- Always start with **discovery** (what speeches exist?)
+- Then **extraction** (can we get clean content?)
+- Then **validation** (is this actually a speech?)
+- Finally **speaker recognition** (who said this?)
+
+## 🛡️ Quality Assurance Framework
+
+### Multi-Layer Validation
+```python
+# validation/validator.py
+class SpeechValidationFramework:
+    def __init__(self):
+        self.content_validators = [
+            ContentLengthValidator(),      # Minimum viable content
+            LanguageDetectionValidator(),  # Correct language detection
+            SpeechStructureValidator(),    # Looks like a speech
+            BoilerplateDetectionValidator(), # Not just website boilerplate
+            DuplicateDetectionValidator()   # Not a duplicate
+        ]
+        
+        self.metadata_validators = [
+            SpeakerConsistencyValidator(),  # Speaker exists and is valid
+            DateRangeValidator(),          # Date makes sense
+            InstitutionConsistencyValidator(), # Institution data is correct
+            RoleValidationValidator()       # Speaker role is accurate
+        ]
+```
+
+### Automated Testing Requirements
+- **Unit Tests**: Every method, every edge case
+- **Integration Tests**: Every plugin, every major workflow
+- **Performance Tests**: Response time benchmarks
+- **Quality Tests**: Content validation accuracy
+- **Regression Tests**: Ensure updates don't break existing functionality
+
+## ⚡ Performance & Scalability Standards
+
+### Response Time Targets
+- **Speech Discovery**: < 10 seconds for 1-year date range
+- **Content Extraction**: < 5 seconds per speech
+- **NLP Processing**: < 30 seconds per speech
+- **Database Queries**: < 1 second for standard queries
+
+### Scalability Requirements
+- **Horizontal Scaling**: System must work with multiple worker processes
+- **Plugin Isolation**: One plugin failure cannot crash the system
+- **Resource Management**: Intelligent rate limiting and request queuing
+- **Memory Efficiency**: Process speeches without loading entire datasets
+
+## 🔍 Monitoring & Observability
+
+### Key Metrics to Track
+- **Collection Success Rate**: % of discovered speeches successfully processed
+- **Content Quality Score**: Average validation score across all speeches
+- **Processing Time**: Time from discovery to final storage
+- **Error Rates**: Categorized by plugin and error type
+- **Data Freshness**: How quickly new speeches are discovered and processed
+
+### Alerting Thresholds
+- **Success Rate < 80%**: Immediate alert
+- **Processing Time > 2x Normal**: Warning alert
+- **Plugin Failure**: Immediate alert with context
+- **Storage Issues**: Critical alert
+
+## 🚀 Implementation Roadmap
+
+### Phase 1: Foundation (Months 1-2)
+- [ ] Implement core plugin interface and orchestrator
+- [ ] Migrate existing Fed/BoE/BIS scrapers to plugin format
+- [ ] Implement repository pattern with PostgreSQL backend
+- [ ] Create comprehensive test framework
+
+### Phase 2: Expansion (Months 3-4)
+- [ ] ECB plugin with multi-language support
+- [ ] BoJ plugin with Japanese language processing
+- [ ] Enhanced NLP pipeline with topic modeling
+- [ ] Comprehensive validation framework
+
+### Phase 3: Scale (Months 5-6)
+- [ ] Tier 2 central banks (RBA, BOC, SNB)
+- [ ] Advanced cross-institutional analysis
+- [ ] Performance optimization and caching
+- [ ] Complete API documentation
+
+## 💡 Development Guidelines
+
+### When Adding New Features
+1. **Start with Domain**: How does this fit our domain model?
+2. **Design Interface**: What should the abstract interface look like?
+3. **Implement Concrete**: Build the specific implementation
+4. **Add Tests**: Comprehensive test coverage
+5. **Update Documentation**: Keep docs current
+
+### When Debugging Issues
+1. **Check Logs**: Structured logging tells the story
+2. **Validate Data**: Is the input data what we expect?
+3. **Test Plugin Isolation**: Does disabling one plugin fix it?
+4. **Check Dependencies**: Are external services working?
+5. **Review Configuration**: Is the config correct?
+
+### When Reviewing Code
+1. **Architecture First**: Does this fit our architectural principles?
+2. **Domain Correctness**: Are we modeling the domain correctly?
+3. **Type Safety**: Are types used correctly everywhere?
+4. **Performance Impact**: Will this scale?
+5. **Test Coverage**: Are the tests comprehensive?
+
+## 🎯 Success Metrics
+
+### Technical Excellence
+- **Code Coverage**: 95%+ across all modules
+- **Type Coverage**: 100% (no `Any` types in production)
+- **Documentation Coverage**: Every public interface documented
+- **Performance Benchmarks**: All targets met consistently
+
+### Data Quality
+- **Speech Authenticity**: 99%+ of collected speeches are genuine
+- **Speaker Recognition**: 95%+ accuracy in speaker identification
+- **Content Completeness**: 90%+ of speeches have full content
+- **Metadata Accuracy**: 98%+ accuracy in metadata extraction
+
+### Platform Adoption
+- **Plugin Coverage**: 10+ central banks by end of year 1
+- **API Usage**: Active usage by external researchers
+- **Data Requests**: Regular requests for bulk data exports
+- **Academic Citations**: Papers citing our data
+
+## 🔥 The 10x Engineer Mindset
+
+### Think Systems, Not Features
+- Every feature should make the system more powerful, not more complex
+- Optimize for the 80% use case, but handle the 20% edge cases gracefully
+- Build abstractions that make complex things simple, not simple things complex
+
+### Obsess Over Quality
+- Code quality is not negotiable - it's the foundation of everything else
+- Automated testing is not optional - it's how we ensure quality at scale
+- Performance is not an afterthought - it's designed in from the beginning
+
+### Design for Change
+- Requirements will change - build systems that adapt
+- Technologies will change - use abstractions to minimize coupling
+- Team will change - write code that explains itself
+
+### Measure Everything
+- If you can't measure it, you can't improve it
+- Logs are data - structure them for analysis
+- Metrics drive decisions - collect the right ones
+
+---
+
+**Remember**: We're not just building a scraper - we're building the foundation for the next generation of monetary policy research. Every line of code should reflect that ambition.
+
+
+1. High-Level Layers
+interfaces/
+– Pure abstraction (no dependencies)
+– Plugin contracts, QuerySpecifications, DTOs
+
+domain/
+– Rich entities (with invariants), value objects, repository interfaces
+
+application/
+– Orchestrators (multi-plugin workflows)
+– Use-case services (speech collection, analysis, export)
+– Command/Query handlers (for CQRS)
+
+infrastructure/
+– persistence/: SQLAlchemy/Postgres, Elasticsearch, etc.
+– web/: HTTP clients, scrapers (generic helpers)
+– nlp/: model loaders, tokenizer wrappers
+– messaging/: Kafka/RabbitMQ adapters
+– monitoring/: metrics (Prometheus), tracing (OpenTelemetry)
+
+plugins/
+– Per-bank subpackage (fed, ecb, boe, boj, …)
+– Each implements exactly one CentralBankScraperPlugin
+
+config/
+– Typed settings (pydantic/YAML)
+– Secrets management
+
+api/
+– REST/GraphQL server (FastAPI) exposing collection & query endpoints
+
+tools/
+– CLI entrypoints (speechctl collect, speechctl analyze, etc.)
+
+testing/
+– Fixtures, test harnesses, end-to-end scenarios
+
+2. Directory Skeleton
+text
+Copy
+Edit
+central_bank_speech_platform/
+├── application/
+│   ├── orchestrators/
+│   │   └── speech_collection.py   # Multi-plugin workflow
+│   ├── services/
+│   │   ├── collection_service.py  # Single institution
+│   │   └── analysis_service.py    # NLP pipeline orchestration
+│   ├── commands/               # CLI or message handlers
+│   └── dtos/                   # Internal service DTOs
+├── config/
+│   ├── settings.py            # pydantic BaseSettings
+│   └── logging.yaml           # log formatters/handlers
+├── domain/
+│   ├── entities.py
+│   ├── value_objects.py
+│   └── repositories.py        # Abstract repo + QuerySpecs
+├── infrastructure/
+│   ├── persistence/
+│   │   ├── models.py          # SQLAlchemy Base + ORM
+│   │   ├── repositories.py    # Concrete SqlAlchemyRepos
+│   │   └── uow.py             # UnitOfWork pattern
+│   ├── web/
+│   │   └── http_client.py     # resilient HTTP wrapper
+│   ├── nlp/
+│   │   └── engines.py         # spacy, transformers loaders
+│   ├── messaging/
+│   │   └── kafka_producer.py
+│   └── monitoring/
+│       └── metrics.py         # Prometheus collectors
+├── interfaces/
+│   ├── plugin_interfaces.py   # CentralBankScraperPlugin, SpeakerDatabase, DateRange
+│   └── spec_interfaces.py     # QuerySpecification, DTOs for app layer
+├── nlp/
+│   ├── pipeline.py            # NLPProcessingPipeline
+│   └── processors/            # HawkDove, TopicModeling, …
+├── plugins/
+│   ├── federal_reserve/
+│   │   └── plugin.py          # implements interface
+│   ├── ecb/
+│   └── …
+├── tools/
+│   └── cli.py                 # typer/Click entrypoint
+├── testing/
+│   ├── unit/
+│   ├── integration/
+│   └── fixtures/
+├── BaselineObjective.txt
+└── README.md
+3. Core Modules & Responsibilities
+3.1 interfaces/plugin_interfaces.py
+Contract: CentralBankScraperPlugin (5 required methods + defaults)
+
+DTOs: SpeechMetadata, SpeechContent, ValidationResult, SpeakerDatabase
+
+Enums: ValidationStatus, SpeechType
+
+3.2 domain/*
+Entities: CentralBankSpeech, CentralBankSpeaker, Institution, SentimentAnalysis
+
+Value Objects: SpeechId, Url, DateRange, MonetaryAmount, SentimentScore, TextStatistics
+
+Repository Interfaces: SpeechRepository, SpeakerRepository, InstitutionRepository, SpeechCollectionRepository
+
+Query Specs: encapsulate filtering logic (and/or/not)
+
+Invariant: Domain code has zero external dependencies.
+
+3.3 application/orchestrators/speech_collection.py
+SpeechCollectionOrchestrator
+
+Register and validate plugins
+
+Loop over institutions → call CollectionService
+
+Aggregate metrics, errors
+
+Expose collect_all(date_range, concurrency)
+
+3.4 application/services/collection_service.py
+CollectionService
+
+Discover (plugin.discover_speeches)
+
+Filter existing (SpeechRepository.get_by_url)
+
+Extract (plugin.extract_speech_content)
+
+Validate (plugin.validate_speech_authenticity)
+
+Assign speaker (plugin.get_speaker_database())
+
+Save to repo (uow.speeches.save)
+
+Respect plugin.get_rate_limit_delay()
+
+3.5 nlp/pipeline.py
+NLPProcessingPipeline
+
+Holds list of NLPProcessor
+
+process_speech() runs all .analyze() in parallel (async)
+
+Aggregates into NLPAnalysis → domain SentimentAnalysis
+
+3.6 infrastructure/persistence/
+SQLAlchemy models mirror Domain fields
+
+Concrete Repos implement all abstract methods, plus UOW
+
+UnitOfWork: bundling speeches, speakers, institutions repos in a transaction
+
+3.7 plugins/{bank}/plugin.py
+Exactly one class per bank implementing CentralBankScraperPlugin
+
+Structure:
+
+get_institution_code/name/languages
+
+discover_speeches(date_range, limit)
+
+extract_speech_content(metadata)
+
+get_speaker_database()
+
+validate_speech_authenticity(metadata, content)
+
+Testing: each plugin has its own integration suite (20+ cases)
+
+3.8 api/
+FastAPI with DI:
+
+Inject SpeechCollectionOrchestrator, SpeechQueryService
+
+Endpoints:
+
+POST /collect?start=&end=&institution=
+
+GET /speeches?filter…
+
+GET /institutions
+
+Pydantic schemas map to domain/value-object DTOs
+
+3.9 tools/cli.py
+Typer commands mirror API &/or direct orchestrator calls
+
+Useful for cron or Jenkins jobs
+
+3.10 config/settings.py
+Single Settings class (pydantic) for DB URLs, API keys, rate-limits, concurrency
+
+Environment-driven
+
+4. Cross-Cutting Concerns
+Dependency Injection: use a simple container (e.g. punq or built-in FastAPI DI) so modules import interfaces only
+
+Logging: structured JSON logs (timestamp, level, module, msg, context) via logging.yaml
+
+Metrics: Prometheus counters for “speeches_discovered”, “speeches_processed”, “validation_failures”, “processor_latency_seconds”
+
+Tracing: OpenTelemetry instrumentation on CollectionService and NLPProcessingPipeline
+
+Error Handling: Custom exceptions (CollectionError, PluginError); failures in one plugin do not abort the overall job
+
+5. Testing Strategy
+Unit tests for every public method (95%+ coverage)
+
+Integration tests per-plugin (mock HTTP → real SpeechMetadata → real extraction + validation)
+
+E2E tests: small date range, spin up test DB, collect and query via CLI/API
+
+Contract tests: verify each plugin truly implements the interface (e.g. via introspection)
+
+Summary
+This specification:
+
+Reifies the “Sacred Geometry” folder structure
+
+Enforces domain-driven, plugin-first, single-responsibility
+
+Guides future codegen: every new component slots neatly into a layer
+
+Ensures infinite scalability—adding /plugins/boc/plugin.py is trivial
+
+Keep this document as the single source of truth for architecture. All future pull requests, codegen prompts, and design discussions should map back to these modules and layers.
+
+
+
+
+
+
+
