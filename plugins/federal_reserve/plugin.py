@@ -43,6 +43,13 @@ from interfaces.plugin_interfaces import (
     ValidationResult, ValidationStatus, SpeechType, SpeakerDatabase
 )
 
+# Add to imports section
+from domain.value_objects import DateRange, Url, ContentHash
+from interfaces.plugin_interfaces import (
+    CentralBankScraperPlugin, SpeechMetadata, SpeechContent, 
+    ValidationResult, ValidationStatus, SpeakerDatabase
+)
+
 # Optional Selenium imports
 try:
     from selenium import webdriver
@@ -117,53 +124,67 @@ class FederalReservePlugin(CentralBankScraperPlugin):
             description="The central banking system of the United States"
         )
     
-    def discover_speeches(self, date_range: DateRange) -> List[SpeechMetadata]:
-        """
-        Discover Federal Reserve speeches within the specified date range.
+async def discover_speeches(self, date_range: DateRange, limit: Optional[int] = None) -> List[SpeechMetadata]:
+    """Discover Federal Reserve speeches within date range."""
+    speeches = []
+    
+    try:
+        # Get HTTP client
+        client = await self.get_http_client()
         
-        Args:
-            date_range: Date range to search for speeches
-            
-        Returns:
-            List of speech metadata for discovered speeches
-        """
-        logger.info(f"Discovering Federal Reserve speeches for {date_range}")
+        # Fed speeches are typically at /newsevents/speech/
+        speech_url = f"{self.base_url}/newsevents/speech/"
         
-        all_speeches = []
+        # Fetch the speech listing page
+        response = await client.get(speech_url)
+        response.raise_for_status()
         
-        # Method 1: Historical year-by-year scraping
-        start_year = date_range.start_date.year
-        end_year = date_range.end_date.year
+        # Parse with BeautifulSoup
+        soup = BeautifulSoup(response.content, 'html.parser')
         
-        for year in range(start_year, end_year + 1):
-            year_speeches = self._scrape_speeches_by_year(year)
-            
-            # Filter by date range
-            filtered_speeches = [
-                speech for speech in year_speeches
-                if speech.date and date_range.contains(speech.date)
-            ]
-            
-            all_speeches.extend(filtered_speeches)
-            logger.info(f"Found {len(filtered_speeches)} speeches for {year}")
-            
-            # Respectful delay
-            time.sleep(1)
+        # Find speech links (Fed uses specific patterns)
+        speech_links = soup.find_all('a', href=True)
         
-        # Method 2: Current speeches page (for recent speeches)
-        if date_range.end_date >= date.today():
-            current_speeches = self._scrape_current_speeches_page()
-            current_filtered = [
-                speech for speech in current_speeches
-                if speech.date and date_range.contains(speech.date)
-            ]
-            all_speeches.extend(current_filtered)
+        for link in speech_links:
+            href = link.get('href', '')
+            if '/newsevents/speech/' in href and href.endswith('.htm'):
+                # Extract speech metadata
+                title = link.get_text(strip=True)
+                
+                # Build full URL
+                if href.startswith('/'):
+                    full_url = f"{self.base_url}{href}"
+                else:
+                    full_url = href
+                
+                # Try to extract date and speaker from URL or text
+                speech_date = self._extract_date_from_url(full_url)
+                speaker_name = self._extract_speaker_from_title(title)
+                
+                # Check if within date range
+                if speech_date and date_range.contains(speech_date):
+                    metadata = SpeechMetadata(
+                        title=title,
+                        speaker_name=speaker_name,
+                        date=speech_date,
+                        url=Url(full_url),
+                        institution_code="FED",
+                        content_hash=ContentHash.from_url(full_url)
+                    )
+                    speeches.append(metadata)
+                    
+                    # Apply limit if specified
+                    if limit and len(speeches) >= limit:
+                        break
         
-        # Remove duplicates
-        unique_speeches = self._deduplicate_speeches(all_speeches)
+        # Sort by date (newest first)
+        speeches.sort(key=lambda x: x.date, reverse=True)
         
-        logger.info(f"Discovered {len(unique_speeches)} unique Federal Reserve speeches")
-        return unique_speeches
+        return speeches
+        
+    except Exception as e:
+        logger.error(f"Error discovering Fed speeches: {e}")
+        raise ConnectionError(f"Failed to discover Fed speeches: {e}")
     
     def extract_speech_content(self, speech_metadata: SpeechMetadata) -> SpeechContent:
         """
