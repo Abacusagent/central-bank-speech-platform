@@ -11,22 +11,23 @@ Key Principles:
 - Repository methods use domain objects and value objects
 - Query methods return domain entities, not raw data
 - Implementations live in infrastructure layer
+
+Author: Central Bank Speech Analysis Platform
+Date: 2025
+Version: 2.0.0
 """
 
 from abc import ABC, abstractmethod
 from datetime import date, datetime
-from typing import List, Optional, Dict, Any, Set, Union, AsyncIterator
+from typing import List, Optional, Dict, Any, Set, Union, AsyncIterator, Tuple
 from uuid import UUID
 
 from domain.entities import (
-    CentralBankSpeech, CentralBankSpeaker, Institution, SpeechCollection,
-    SentimentAnalysis, SpeechStatus, PolicyStance
+    CentralBankSpeech, CentralBankSpeaker, Institution, 
+    SentimentAnalysis, SpeechStatus, PolicyStance, InstitutionType
 )
-from domain.value_objects import (
-    SpeechId, DateRange, SentimentScore, Url, ContentHash, 
-    ProcessingMetrics, TextStatistics
-)
-from interfaces.plugin_interfaces import SpeechMetadata, SpeechContent
+from domain.value_objects import DateRange, Url, ContentHash, ConfidenceLevel
+from interfaces.plugin_interfaces import SpeechMetadata, SpeechContent, ValidationResult
 
 
 class RepositoryError(Exception):
@@ -133,6 +134,23 @@ class SpeechRepository(ABC):
         pass
     
     @abstractmethod
+    async def save_batch(self, speeches: List[CentralBankSpeech]) -> None:
+        """
+        Save multiple speeches in a single operation for performance.
+        
+        Args:
+            speeches: List of speech entities to save
+            
+        Raises:
+            RepositoryError: If batch save operation fails
+            
+        Example:
+            >>> speeches = [CentralBankSpeech(...), CentralBankSpeech(...)]
+            >>> await repository.save_batch(speeches)
+        """
+        pass
+    
+    @abstractmethod
     async def get_by_id(self, speech_id: UUID) -> Optional[CentralBankSpeech]:
         """
         Retrieve a speech by its unique ID.
@@ -150,9 +168,9 @@ class SpeechRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_by_url(self, url: Url) -> Optional[CentralBankSpeech]:
+    async def get_by_url(self, url: str) -> Optional[CentralBankSpeech]:
         """
-        Retrieve a speech by its source URL.
+        Retrieve a speech by its source URL from metadata.
         
         Args:
             url: Source URL of the speech
@@ -161,7 +179,7 @@ class SpeechRepository(ABC):
             Speech entity if found, None otherwise
             
         Example:
-            >>> url = Url("https://www.federalreserve.gov/newsevents/speech/...")
+            >>> url = "https://www.federalreserve.gov/newsevents/speech/..."
             >>> speech = await repository.get_by_url(url)
         """
         pass
@@ -198,6 +216,20 @@ class SpeechRepository(ABC):
         pass
     
     @abstractmethod
+    async def find_by_speaker_name(self, speaker_name: str, limit: Optional[int] = None) -> List[CentralBankSpeech]:
+        """
+        Find all speeches by speaker name (more flexible than find_by_speaker).
+        
+        Args:
+            speaker_name: Name of speaker to search for
+            limit: Maximum number of results to return
+            
+        Returns:
+            List of speeches by speakers matching the name
+        """
+        pass
+    
+    @abstractmethod
     async def find_by_institution(self, institution: Institution, limit: Optional[int] = None) -> List[CentralBankSpeech]:
         """
         Find all speeches from a specific institution.
@@ -208,6 +240,20 @@ class SpeechRepository(ABC):
             
         Returns:
             List of speeches from the institution, ordered by date (newest first)
+        """
+        pass
+    
+    @abstractmethod
+    async def find_by_institution_code(self, institution_code: str, limit: Optional[int] = None) -> List[CentralBankSpeech]:
+        """
+        Find all speeches from an institution by code.
+        
+        Args:
+            institution_code: Institution code (e.g., "FED", "BOE")
+            limit: Maximum number of results to return
+            
+        Returns:
+            List of speeches from the institution
         """
         pass
     
@@ -224,6 +270,7 @@ class SpeechRepository(ABC):
             List of speeches within the date range, ordered by date (newest first)
             
         Example:
+            >>> from domain.value_objects import DateRange
             >>> date_range = DateRange.year(2024)
             >>> speeches = await repository.find_by_date_range(date_range)
         """
@@ -293,6 +340,36 @@ class SpeechRepository(ABC):
         pass
     
     @abstractmethod
+    async def stream_by_institution(self, institution: Institution) -> AsyncIterator[CentralBankSpeech]:
+        """
+        Stream speeches from an institution for memory-efficient processing.
+        
+        Args:
+            institution: Institution to stream speeches from
+            
+        Yields:
+            Speech entities one at a time
+            
+        Example:
+            >>> async for speech in repository.stream_by_institution(fed):
+            ...     await process_speech(speech)
+        """
+        pass
+    
+    @abstractmethod
+    async def get_unprocessed_speeches(self, limit: Optional[int] = None) -> List[CentralBankSpeech]:
+        """
+        Get speeches that haven't been analyzed yet.
+        
+        Args:
+            limit: Maximum number of results to return
+            
+        Returns:
+            List of speeches without sentiment analysis
+        """
+        pass
+    
+    @abstractmethod
     async def count_by_institution(self, institution: Institution) -> int:
         """
         Count speeches from a specific institution.
@@ -315,6 +392,20 @@ class SpeechRepository(ABC):
             
         Returns:
             Number of speeches with the status
+        """
+        pass
+    
+    @abstractmethod
+    async def count_by_date_range(self, date_range: DateRange, institution: Optional[Institution] = None) -> int:
+        """
+        Count speeches within a date range.
+        
+        Args:
+            date_range: Date range to count within
+            institution: Optional institution filter
+            
+        Returns:
+            Number of speeches in the date range
         """
         pass
     
@@ -369,6 +460,19 @@ class SpeechRepository(ABC):
         pass
     
     @abstractmethod
+    async def exists_by_url(self, url: str) -> bool:
+        """
+        Check if a speech exists by URL.
+        
+        Args:
+            url: URL to check
+            
+        Returns:
+            True if speech with URL exists, False otherwise
+        """
+        pass
+    
+    @abstractmethod
     async def get_processing_metrics(self, date_range: Optional[DateRange] = None) -> Dict[str, Any]:
         """
         Get processing metrics for speeches.
@@ -404,6 +508,19 @@ class SpeakerRepository(ABC):
         pass
     
     @abstractmethod
+    async def save_batch(self, speakers: List[CentralBankSpeaker]) -> None:
+        """
+        Save multiple speakers in a single operation.
+        
+        Args:
+            speakers: List of speaker entities to save
+            
+        Raises:
+            RepositoryError: If batch save operation fails
+        """
+        pass
+    
+    @abstractmethod
     async def get_by_id(self, speaker_id: UUID) -> Optional[CentralBankSpeaker]:
         """
         Retrieve a speaker by their unique ID.
@@ -426,6 +543,20 @@ class SpeakerRepository(ABC):
             
         Returns:
             List of speakers matching the name
+        """
+        pass
+    
+    @abstractmethod
+    async def find_by_name_fuzzy(self, name: str, threshold: float = 0.8) -> List[CentralBankSpeaker]:
+        """
+        Find speakers using fuzzy name matching.
+        
+        Args:
+            name: Name to search for
+            threshold: Similarity threshold (0.0 to 1.0)
+            
+        Returns:
+            List of speakers with similar names
         """
         pass
     
@@ -461,7 +592,7 @@ class SpeakerRepository(ABC):
         Find speakers by their role.
         
         Args:
-            role: Role to search for
+            role: Role to search for (e.g., "Chair", "Governor")
             institution: Optional institution filter
             
         Returns:
@@ -492,6 +623,32 @@ class SpeakerRepository(ABC):
             
         Returns:
             List of speakers with matching alternate names
+        """
+        pass
+    
+    @abstractmethod
+    async def get_speaker_statistics(self, speaker: CentralBankSpeaker) -> Dict[str, Any]:
+        """
+        Get statistics for a speaker (speech count, date range, etc.).
+        
+        Args:
+            speaker: Speaker to get statistics for
+            
+        Returns:
+            Dictionary with speaker statistics
+        """
+        pass
+    
+    @abstractmethod
+    async def get_speakers_by_speech_count(self, min_speeches: int = 1) -> List[Tuple[CentralBankSpeaker, int]]:
+        """
+        Get speakers with their speech counts.
+        
+        Args:
+            min_speeches: Minimum number of speeches to include speaker
+            
+        Returns:
+            List of tuples (speaker, speech_count) ordered by speech count desc
         """
         pass
     
@@ -594,6 +751,32 @@ class InstitutionRepository(ABC):
         pass
     
     @abstractmethod
+    async def find_by_type(self, institution_type: InstitutionType) -> List[Institution]:
+        """
+        Find institutions by type.
+        
+        Args:
+            institution_type: Type of institution
+            
+        Returns:
+            List of institutions of the specified type
+        """
+        pass
+    
+    @abstractmethod
+    async def get_institution_statistics(self, institution: Institution) -> Dict[str, Any]:
+        """
+        Get statistics for an institution.
+        
+        Args:
+            institution: Institution to get statistics for
+            
+        Returns:
+            Dictionary with institution statistics (speech count, speakers, etc.)
+        """
+        pass
+    
+    @abstractmethod
     async def delete(self, institution: Institution) -> None:
         """
         Delete an institution from the repository.
@@ -621,104 +804,6 @@ class InstitutionRepository(ABC):
         pass
 
 
-class SpeechCollectionRepository(ABC):
-    """
-    Abstract repository for Speech Collection entities.
-    
-    Manages collections of related speeches and provides
-    methods for organizing and retrieving speech groupings.
-    """
-    
-    @abstractmethod
-    async def save(self, collection: SpeechCollection) -> None:
-        """
-        Save a speech collection to the repository.
-        
-        Args:
-            collection: Collection entity to save
-            
-        Raises:
-            RepositoryError: If save operation fails
-        """
-        pass
-    
-    @abstractmethod
-    async def get_by_id(self, collection_id: UUID) -> Optional[SpeechCollection]:
-        """
-        Retrieve a collection by its unique ID.
-        
-        Args:
-            collection_id: Unique identifier for the collection
-            
-        Returns:
-            Collection entity if found, None otherwise
-        """
-        pass
-    
-    @abstractmethod
-    async def get_by_name(self, name: str) -> Optional[SpeechCollection]:
-        """
-        Retrieve a collection by its name.
-        
-        Args:
-            name: Collection name
-            
-        Returns:
-            Collection entity if found, None otherwise
-        """
-        pass
-    
-    @abstractmethod
-    async def get_all(self) -> List[SpeechCollection]:
-        """
-        Get all collections in the repository.
-        
-        Returns:
-            List of all collections
-        """
-        pass
-    
-    @abstractmethod
-    async def find_by_tag(self, tag: str) -> List[SpeechCollection]:
-        """
-        Find collections by tag.
-        
-        Args:
-            tag: Tag to search for
-            
-        Returns:
-            List of collections with the specified tag
-        """
-        pass
-    
-    @abstractmethod
-    async def delete(self, collection: SpeechCollection) -> None:
-        """
-        Delete a collection from the repository.
-        
-        Args:
-            collection: Collection to delete
-            
-        Raises:
-            EntityNotFoundError: If collection doesn't exist
-            RepositoryError: If deletion fails
-        """
-        pass
-    
-    @abstractmethod
-    async def exists(self, collection_id: UUID) -> bool:
-        """
-        Check if a collection exists in the repository.
-        
-        Args:
-            collection_id: ID of collection to check
-            
-        Returns:
-            True if collection exists, False otherwise
-        """
-        pass
-
-
 class AnalysisRepository(ABC):
     """
     Abstract repository for sentiment analysis results.
@@ -738,6 +823,19 @@ class AnalysisRepository(ABC):
             
         Raises:
             RepositoryError: If save operation fails
+        """
+        pass
+    
+    @abstractmethod
+    async def save_analyses_batch(self, analyses: List[Tuple[UUID, SentimentAnalysis]]) -> None:
+        """
+        Save multiple analysis results in a single operation.
+        
+        Args:
+            analyses: List of (speech_id, analysis) tuples
+            
+        Raises:
+            RepositoryError: If batch save operation fails
         """
         pass
     
@@ -808,6 +906,31 @@ class AnalysisRepository(ABC):
             Dictionary containing analysis summary statistics
         """
         pass
+    
+    @abstractmethod
+    async def find_analyses_by_stance(self, stance: PolicyStance, 
+                                     date_range: Optional[DateRange] = None) -> List[Tuple[UUID, SentimentAnalysis]]:
+        """
+        Find analyses by policy stance.
+        
+        Args:
+            stance: Policy stance to filter by
+            date_range: Optional date range filter
+            
+        Returns:
+            List of (speech_id, analysis) tuples
+        """
+        pass
+    
+    @abstractmethod
+    async def get_confidence_distribution(self) -> Dict[ConfidenceLevel, int]:
+        """
+        Get distribution of confidence levels across all analyses.
+        
+        Returns:
+            Dictionary mapping confidence levels to counts
+        """
+        pass
 
 
 class UnitOfWork(ABC):
@@ -858,12 +981,6 @@ class UnitOfWork(ABC):
     
     @property
     @abstractmethod
-    def collections(self) -> SpeechCollectionRepository:
-        """Get the collection repository for this unit of work."""
-        pass
-    
-    @property
-    @abstractmethod
     def analyses(self) -> AnalysisRepository:
         """Get the analysis repository for this unit of work."""
         pass
@@ -879,7 +996,7 @@ class SpeakerNameSpecification(QuerySpecification):
     
     def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
         return (speech.speaker is not None and 
-                speech.speaker.matches_name(self.speaker_name))
+                self.speaker_name in speech.speaker.name.lower())
 
 
 class DateRangeSpecification(QuerySpecification):
@@ -889,8 +1006,10 @@ class DateRangeSpecification(QuerySpecification):
         self.date_range = date_range
     
     def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
-        return (speech.speech_date is not None and 
-                self.date_range.contains(speech.speech_date))
+        speech_date = None
+        if speech.metadata and speech.metadata.date:
+            speech_date = speech.metadata.date
+        return speech_date is not None and self.date_range.contains(speech_date)
 
 
 class InstitutionSpecification(QuerySpecification):
@@ -903,6 +1022,20 @@ class InstitutionSpecification(QuerySpecification):
         return speech.institution == self.institution
 
 
+class InstitutionCodeSpecification(QuerySpecification):
+    """Specification for filtering speeches by institution code."""
+    
+    def __init__(self, institution_code: str):
+        self.institution_code = institution_code.upper()
+    
+    def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
+        if speech.institution:
+            return speech.institution.code.upper() == self.institution_code
+        elif speech.metadata:
+            return speech.metadata.institution_code.upper() == self.institution_code
+        return False
+
+
 class PolicyStanceSpecification(QuerySpecification):
     """Specification for filtering speeches by policy stance."""
     
@@ -910,7 +1043,8 @@ class PolicyStanceSpecification(QuerySpecification):
         self.stance = stance
     
     def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
-        return speech.policy_stance == self.stance
+        return (speech.sentiment_analysis is not None and 
+                speech.sentiment_analysis.policy_stance == self.stance)
 
 
 class SentimentScoreRangeSpecification(QuerySpecification):
@@ -921,8 +1055,8 @@ class SentimentScoreRangeSpecification(QuerySpecification):
         self.max_score = max_score
     
     def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
-        return (speech.hawkish_dovish_score is not None and 
-                self.min_score <= speech.hawkish_dovish_score <= self.max_score)
+        return (speech.sentiment_analysis is not None and 
+                self.min_score <= speech.sentiment_analysis.hawkish_dovish_score <= self.max_score)
 
 
 class StatusSpecification(QuerySpecification):
@@ -942,7 +1076,7 @@ class TagSpecification(QuerySpecification):
         self.tag = tag.lower()
     
     def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
-        return speech.has_tag(self.tag)
+        return any(self.tag in existing_tag.lower() for existing_tag in speech.tags)
 
 
 class WordCountRangeSpecification(QuerySpecification):
@@ -953,5 +1087,118 @@ class WordCountRangeSpecification(QuerySpecification):
         self.max_words = max_words
     
     def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
-        return (speech.word_count is not None and 
-                self.min_words <= speech.word_count <= self.max_words)
+        word_count = 0
+        if speech.content and speech.content.word_count:
+            word_count = speech.content.word_count
+        return self.min_words <= word_count <= self.max_words
+
+
+class ConfidenceThresholdSpecification(QuerySpecification):
+    """Specification for filtering speeches by analysis confidence."""
+    
+    def __init__(self, min_confidence: float):
+        self.min_confidence = min_confidence
+    
+    def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
+        return (speech.sentiment_analysis is not None and 
+                speech.sentiment_analysis.confidence_score >= self.min_confidence)
+
+
+class UncertaintyRangeSpecification(QuerySpecification):
+    """Specification for filtering speeches by uncertainty score range."""
+    
+    def __init__(self, min_uncertainty: float, max_uncertainty: float):
+        self.min_uncertainty = min_uncertainty
+        self.max_uncertainty = max_uncertainty
+    
+    def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
+        return (speech.sentiment_analysis is not None and 
+                self.min_uncertainty <= speech.sentiment_analysis.uncertainty_score <= self.max_uncertainty)
+
+
+class TopicSpecification(QuerySpecification):
+    """Specification for filtering speeches by topic classification."""
+    
+    def __init__(self, topic: str):
+        self.topic = topic.lower()
+    
+    def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
+        if speech.sentiment_analysis and speech.sentiment_analysis.topic_classifications:
+            return any(self.topic in topic.lower() for topic in speech.sentiment_analysis.topic_classifications)
+        return False
+
+
+class HasAnalysisSpecification(QuerySpecification):
+    """Specification for filtering speeches that have been analyzed."""
+    
+    def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
+        return speech.sentiment_analysis is not None
+
+
+class HasContentSpecification(QuerySpecification):
+    """Specification for filtering speeches that have extracted content."""
+    
+    def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
+        return speech.content is not None and speech.content.cleaned_text.strip() != ""
+
+
+class ValidationStatusSpecification(QuerySpecification):
+    """Specification for filtering speeches by validation status."""
+    
+    def __init__(self, validation_status: str):
+        self.validation_status = validation_status.lower()
+    
+    def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
+        return (speech.validation_result is not None and 
+                speech.validation_result.status.value.lower() == self.validation_status)
+
+
+class RecentSpeechSpecification(QuerySpecification):
+    """Specification for filtering recent speeches (within last N days)."""
+    
+    def __init__(self, days: int):
+        from datetime import date, timedelta
+        self.cutoff_date = date.today() - timedelta(days=days)
+    
+    def is_satisfied_by(self, speech: CentralBankSpeech) -> bool:
+        speech_date = None
+        if speech.metadata and speech.metadata.date:
+            speech_date = speech.metadata.date
+        return speech_date is not None and speech_date >= self.cutoff_date
+
+
+# Convenience factory functions for common specifications
+
+def create_federal_reserve_spec() -> QuerySpecification:
+    """Create specification for Federal Reserve speeches."""
+    return InstitutionCodeSpecification("FED")
+
+
+def create_analyzed_speeches_spec() -> QuerySpecification:
+    """Create specification for speeches with analysis."""
+    return HasAnalysisSpecification()
+
+
+def create_high_confidence_spec(min_confidence: float = 0.8) -> QuerySpecification:
+    """Create specification for high-confidence analyses."""
+    return ConfidenceThresholdSpecification(min_confidence)
+
+
+def create_hawkish_speeches_spec() -> QuerySpecification:
+    """Create specification for hawkish speeches."""
+    return PolicyStanceSpecification(PolicyStance.HAWKISH)
+
+
+def create_dovish_speeches_spec() -> QuerySpecification:
+    """Create specification for dovish speeches."""
+    return PolicyStanceSpecification(PolicyStance.DOVISH)
+
+
+def create_recent_fed_speeches_spec(days: int = 30) -> QuerySpecification:
+    """Create specification for recent Federal Reserve speeches."""
+    return create_federal_reserve_spec().and_spec(RecentSpeechSpecification(days))
+
+
+def create_analyzed_hawkish_spec() -> QuerySpecification:
+    """Create specification for analyzed hawkish speeches."""
+    return HasAnalysisSpecification().and_spec(PolicyStanceSpecification(PolicyStance.HAWKISH))

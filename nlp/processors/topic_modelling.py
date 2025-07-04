@@ -14,7 +14,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from nlp.pipeline import NLPProcessor, ProcessorResult
+from infrastructure.nlp.pipeline import NLPProcessor, ProcessorResult
 from domain.entities import CentralBankSpeech
 from domain.value_objects import ConfidenceLevel
 

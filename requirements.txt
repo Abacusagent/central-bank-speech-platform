@@ -1,0 +1,57 @@
+# Central Bank Speech Analysis Platform - Production Dependencies
+# Core Framework
+pydantic==2.5.2
+pydantic-settings==2.1.0
+typing-extensions==4.8.0
+
+# Database & Persistence
+sqlalchemy[asyncio]==2.0.23
+asyncpg==0.29.0
+alembic==1.13.1
+
+# HTTP & Web Scraping
+httpx==0.25.2
+aiohttp==3.9.1
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+selenium==4.15.2
+
+# PDF Processing
+pdfplumber==0.10.3
+PyPDF2==3.0.1
+
+# NLP & Analysis
+spacy==3.7.2
+transformers==4.36.2
+torch==2.1.2
+numpy==1.24.3
+pandas==2.0.3
+scikit-learn==1.3.2
+
+# CLI & API
+typer==0.9.0
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+
+# Monitoring & Observability
+prometheus-client==0.19.0
+structlog==23.2.0
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+
+# Testing & Development
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+factory-boy==3.3.0
+faker==20.1.0
+httpx-mock==0.10.0
+
+# Utilities
+python-dotenv==1.0.0
+click==8.1.7
+rich==13.7.0
+tenacity==8.2.3

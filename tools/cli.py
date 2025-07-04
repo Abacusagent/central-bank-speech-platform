@@ -26,7 +26,7 @@ from config.settings import settings
 from domain.value_objects import DateRange
 from application.orchestrators.speech_collection import SpeechCollectionOrchestrator
 from application.services.analysis_service import SpeechAnalysisService
-from nlp.pipeline import NLPProcessingPipeline
+from infrastructure.nlp.pipeline import NLPProcessingPipeline
 from infrastructure.persistence.uow import SqlAlchemyUnitOfWork
 from infrastructure.monitoring.metrics import start_metrics_server, set_system_health
 
